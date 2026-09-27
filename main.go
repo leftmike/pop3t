@@ -37,6 +37,7 @@ var (
 		"help":    {help: "show this help"},
 		"list":    {run: list, help: "list all messages with id, language, and subject"},
 		"send":    {flags: sendFlags, run: send, help: "send an email via SMTP; reads body from stdin"},
+		"test":    {run: test, help: "list messages from files with filename, language, and subject"},
 	}
 )
 
