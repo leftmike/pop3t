@@ -173,10 +173,8 @@ func filter(cfg *config, args []string) {
 		}
 	}
 
-	jd, err := cfg.newJevDetector()
-	if err != nil {
-		fatal(err)
-	} else if jd == nil && len(jevFilters) > 0 {
+	jd := cfg.newJevDetector()
+	if jd == nil && len(jevFilters) > 0 {
 		fatal(errors.New("spam and malicious filters require a jev api_key"))
 	}
 

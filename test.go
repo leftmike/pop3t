@@ -33,10 +33,7 @@ func testFile(ld lingua.LanguageDetector, jd *jevDetector, name string) error {
 
 func test(cfg *config, args []string) {
 	ld := lingua.NewLanguageDetectorBuilder().FromAllLanguages().Build()
-	jd, err := cfg.newJevDetector()
-	if err != nil {
-		fatal(err)
-	}
+	jd := cfg.newJevDetector()
 	tot := 0
 	for _, name := range args {
 		if err := testFile(ld, jd, name); err != nil {

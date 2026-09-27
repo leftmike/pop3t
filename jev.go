@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,22 +9,105 @@ import (
 	"github.com/pemistahl/lingua-go"
 )
 
-//go:embed email_questions.json
-var emailQuestionsJSON []byte
-
-type jevDetector struct {
-	client    *jev.Client
-	questions map[string]jev.Question
+var emailQuestions = map[string]jev.Question{
+	"spam": {
+		Type:         "noul",
+		Instructions: "Is this email spam?",
+	},
+	"malicious": {
+		Type:         "noul",
+		Instructions: "Is this email malicious?",
+	},
+	"language": {
+		Type:         "choice",
+		Instructions: "What language is this email written in?",
+		Criteria: map[string]string{
+			"afrikaans":   "Die taal is Afrikaans",
+			"albanian":    "Gjuha është shqip",
+			"arabic":      "اللغة هي العربية",
+			"armenian":    "Լեզուն հայերենն է",
+			"azerbaijani": "Dil Azərbaycan dilidir",
+			"basque":      "Hizkuntza euskara da",
+			"belarusian":  "Мова — беларуская",
+			"bengali":     "ভাষাটি বাংলা",
+			"bokmal":      "Språket er bokmål",
+			"bosnian":     "Jezik je bosanski",
+			"bulgarian":   "Езикът е български",
+			"catalan":     "La llengua és el català",
+			"chinese":     "语言是中文",
+			"croatian":    "Jezik je hrvatski",
+			"czech":       "Jazyk je čeština",
+			"danish":      "Sproget er dansk",
+			"dutch":       "De taal is Nederlands",
+			"english":     "The language is English",
+			"esperanto":   "La lingvo estas Esperanto",
+			"estonian":    "Keel on eesti keel",
+			"finnish":     "Kieli on suomi",
+			"french":      "La langue est le français",
+			"ganda":       "Olulimi lwe Luganda",
+			"georgian":    "ენა არის ქართული",
+			"german":      "Die Sprache ist Deutsch",
+			"greek":       "Η γλώσσα είναι τα Ελληνικά",
+			"gujarati":    "ભાષા ગુજરાતી છે",
+			"hebrew":      "השפה היא עברית",
+			"hindi":       "भाषा हिन्दी है",
+			"hungarian":   "A nyelv magyar",
+			"icelandic":   "Tungumálið er íslenska",
+			"indonesian":  "Bahasanya adalah Bahasa Indonesia",
+			"irish":       "Is í an Ghaeilge an teanga",
+			"italian":     "La lingua è l'italiano",
+			"japanese":    "言語は日本語です",
+			"kazakh":      "Тіл — қазақ тілі",
+			"korean":      "언어는 한국어입니다",
+			"latin":       "Lingua est Latina",
+			"latvian":     "Valoda ir latviešu",
+			"lithuanian":  "Kalba yra lietuvių",
+			"macedonian":  "Јазикот е македонски",
+			"malay":       "Bahasanya ialah Bahasa Melayu",
+			"maori":       "Ko te reo Māori te reo",
+			"marathi":     "भाषा मराठी आहे",
+			"mongolian":   "Хэл нь монгол хэл",
+			"nynorsk":     "Språket er nynorsk",
+			"persian":     "زبان فارسی است",
+			"polish":      "Językiem jest polski",
+			"portuguese":  "A língua é o português",
+			"punjabi":     "ਭਾਸ਼ਾ ਪੰਜਾਬੀ ਹੈ",
+			"romanian":    "Limba este română",
+			"russian":     "Язык — русский",
+			"serbian":     "Језик је српски",
+			"shona":       "Mutauro iChiShona",
+			"slovak":      "Jazyk je slovenčina",
+			"slovene":     "Jezik je slovenščina",
+			"somali":      "Luqaddu waa Soomaali",
+			"sotho":       "Puo ke Sesotho",
+			"spanish":     "El idioma es Español",
+			"swahili":     "Lugha ni Kiswahili",
+			"swedish":     "Språket är svenska",
+			"tagalog":     "Ang wika ay Tagalog",
+			"tamil":       "மொழி தமிழ்",
+			"telugu":      "భాష తెలుగు",
+			"thai":        "ภาษาคือภาษาไทย",
+			"tsonga":      "Ririmi i Xitsonga",
+			"tswana":      "Puo ke Setswana",
+			"turkish":     "Dil Türkçe",
+			"ukrainian":   "Мова — українська",
+			"urdu":        "زبان اردو ہے",
+			"vietnamese":  "Ngôn ngữ là tiếng Việt",
+			"welsh":       "Cymraeg yw'r iaith",
+			"xhosa":       "Ulwimi sisiXhosa",
+			"yoruba":      "Èdè náà ni Yorùbá",
+			"zulu":        "Ulimi isiZulu",
+		},
+	},
 }
 
-func (cfg *config) newJevDetector() (*jevDetector, error) {
-	if cfg.Jev.APIKey == "" {
-		return nil, nil
-	}
+type jevDetector struct {
+	client *jev.Client
+}
 
-	var questions map[string]jev.Question
-	if err := json.Unmarshal(emailQuestionsJSON, &questions); err != nil {
-		return nil, err
+func (cfg *config) newJevDetector() *jevDetector {
+	if cfg.Jev.APIKey == "" {
+		return nil
 	}
 
 	return &jevDetector{
@@ -35,8 +116,7 @@ func (cfg *config) newJevDetector() (*jevDetector, error) {
 			BaseURL: cfg.Jev.BaseURL,
 			Model:   cfg.Jev.Model,
 		}),
-		questions: questions,
-	}, nil
+	}
 }
 
 func (msg *message) jevState() map[string]any {
@@ -58,7 +138,7 @@ func (jd *jevDetector) detect(msg *message) (map[string]jev.Answer, error) {
 	}
 	resp, _, err := jd.client.DecideTruncated(context.Background(), jev.DecisionRequest{
 		State:     msg.jevState(),
-		Questions: jd.questions,
+		Questions: emailQuestions,
 	})
 	if err != nil {
 		return nil, err
