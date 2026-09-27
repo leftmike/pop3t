@@ -31,13 +31,20 @@ type smtpConfig struct {
 	NoTLS    bool   `hcl:"no_tls,optional"`
 }
 
+type jevConfig struct {
+	APIKey  string `hcl:"api_key,optional"`
+	BaseURL string `hcl:"base_url,optional"`
+	Model   string `hcl:"model,optional"`
+}
+
 type config struct {
-	Host     string     `hcl:"host,optional"`
-	User     string     `hcl:"user,optional"`
-	Password string     `hcl:"password,optional"`
-	Archive  string     `hcl:"archive,optional"`
-	POP3     pop3Config `hcl:"pop3,optional"`
-	SMTP     smtpConfig `hcl:"smtp,optional"`
+	Host     string      `hcl:"host,optional"`
+	User     string      `hcl:"user,optional"`
+	Password string      `hcl:"password,optional"`
+	Archive  string      `hcl:"archive,optional"`
+	POP3     *pop3Config `hcl:"pop3,block"`
+	SMTP     *smtpConfig `hcl:"smtp,block"`
+	Jev      *jevConfig  `hcl:"jev,block"`
 }
 
 func (cfg *config) pop3Host() string {
@@ -119,6 +126,7 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 	fs.String("smtp-user", "", "SMTP username")
 	fs.String("smtp-password", "", "SMTP password")
 	fs.Bool("smtp-no-tls", false, "SMTP disable TLS")
+	fs.String("jev-api-key", "", "Jev (OpenRouter) API key")
 	fs.Parse(args)
 
 	var cfg *config
@@ -138,6 +146,15 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 		} else if cfg == nil {
 			cfg = &config{}
 		}
+	}
+	if cfg.POP3 == nil {
+		cfg.POP3 = &pop3Config{}
+	}
+	if cfg.SMTP == nil {
+		cfg.SMTP = &smtpConfig{}
+	}
+	if cfg.Jev == nil {
+		cfg.Jev = &jevConfig{}
 	}
 
 	fs.Visit(func(f *flag.Flag) {
@@ -162,6 +179,8 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 			cfg.SMTP.Password = f.Value.String()
 		case "smtp-no-tls":
 			cfg.SMTP.NoTLS = (f.Value.String() == "true")
+		case "jev-api-key":
+			cfg.Jev.APIKey = f.Value.String()
 		case "archive":
 			cfg.Archive = f.Value.String()
 		}
