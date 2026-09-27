@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	msgformat "github.com/emersion/go-message"
 	"github.com/pemistahl/lingua-go"
@@ -25,7 +26,7 @@ func testFile(ld lingua.LanguageDetector, jd *jevDetector, name string) error {
 	}
 	lang, conf, _ := msg.detectLanguage(ld)
 	desc, err := jd.describe(msg, lang, conf)
-	fmt.Printf("%s  [%s] %s\n", name, desc, msg.subject)
+	fmt.Printf("%s  [%s] %s\n", filepath.Base(name), desc, msg.subject)
 	printJevError(err)
 	return nil
 }
