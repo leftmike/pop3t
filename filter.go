@@ -8,6 +8,7 @@ import (
 
 	msgformat "github.com/emersion/go-message"
 	"github.com/knadh/go-pop3"
+	"github.com/leftmike/gjevt/jev"
 	"github.com/pemistahl/lingua-go"
 )
 
@@ -114,11 +115,23 @@ func matchLanguage(lang lingua.Language, langFilters []lingua.Language, exclude 
 	return len(langFilters) == 0 || exclude
 }
 
+func matchJev(answers map[string]jev.Answer, jevFilters []string, exclude bool) bool {
+	for _, name := range jevFilters {
+		if isNoul(answers[name]) {
+			return !exclude
+		}
+	}
+
+	return len(jevFilters) == 0 || exclude
+}
+
 func filter(cfg *config, args []string) {
 	var del bool
 	var addrs []string
 	var langFilters []lingua.Language
 	var exclude bool
+	var jevFilters []string
+	var jevExclude bool
 
 	for _, arg := range args {
 		switch {
@@ -129,6 +142,14 @@ func filter(cfg *config, args []string) {
 			del = true
 		case strings.HasPrefix(arg, "forward="):
 			addrs = append(addrs, strings.TrimPrefix(arg, "forward="))
+		case strings.TrimLeft(arg, "^") == "spam" || strings.TrimLeft(arg, "^") == "malicious":
+			argExclude := strings.HasPrefix(arg, "^")
+			if len(jevFilters) > 0 && argExclude != jevExclude {
+				fatal(fmt.Errorf("spam and malicious filters must be all positive or all negative: %s",
+					arg))
+			}
+			jevExclude = argExclude
+			jevFilters = append(jevFilters, strings.TrimLeft(arg, "^"))
 		default:
 			lang, langExclude, err := parseLanguageFilter(arg)
 			if err != nil {
@@ -152,6 +173,13 @@ func filter(cfg *config, args []string) {
 		}
 	}
 
+	jd, err := cfg.newJevDetector()
+	if err != nil {
+		fatal(err)
+	} else if jd == nil && len(jevFilters) > 0 {
+		fatal(errors.New("spam and malicious filters require a jev api_key"))
+	}
+
 	cnt := 0
 	ld := lingua.NewLanguageDetectorBuilder().FromAllLanguages().Build()
 	tot, err := cfg.list(func(conn *pop3.Conn, id int, entity *msgformat.Entity) error {
@@ -164,7 +192,15 @@ func filter(cfg *config, args []string) {
 		if !exists || conf < 0.5 || !matchLanguage(lang, langFilters, exclude) {
 			return nil
 		}
-		fmt.Printf("%3d [%s %.0f%%] %s\n", id, lang, conf*100, msg.subject)
+		answers, err := jd.detect(msg)
+		if err != nil && len(jevFilters) > 0 {
+			fmt.Printf("skipping: %d: jev: %s\n", id, err)
+			return nil
+		} else if !matchJev(answers, jevFilters, jevExclude) {
+			return nil
+		}
+		fmt.Printf("%3d [%s] %s\n", id, formatJevAnswers(lang, conf, answers), msg.subject)
+		printJevError(err)
 
 		if len(addrs) > 0 {
 			buf, err := conn.Cmd("RETR", true, id)

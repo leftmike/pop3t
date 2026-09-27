@@ -24,18 +24,9 @@ func testFile(ld lingua.LanguageDetector, jd *jevDetector, name string) error {
 		return err
 	}
 	lang, conf, _ := msg.detectLanguage(ld)
-	if jd == nil {
-		fmt.Printf("%s  [%s %.0f%%] %s\n", name, lang, conf*100, msg.subject)
-		return nil
-	}
-
-	answers, err := jd.detect(msg)
-	if err != nil {
-		fmt.Printf("%s  [%s %.0f%%] %s\n", name, lang, conf*100, msg.subject)
-		fmt.Printf("    jev: %s\n", err)
-		return nil
-	}
-	fmt.Printf("%s  [%s] %s\n", name, formatJevAnswers(lang, conf, answers), msg.subject)
+	desc, err := jd.describe(msg, lang, conf)
+	fmt.Printf("%s  [%s] %s\n", name, desc, msg.subject)
+	printJevError(err)
 	return nil
 }
 

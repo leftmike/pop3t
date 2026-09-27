@@ -53,6 +53,9 @@ func (msg *message) jevState() map[string]any {
 }
 
 func (jd *jevDetector) detect(msg *message) (map[string]jev.Answer, error) {
+	if jd == nil {
+		return nil, nil
+	}
 	resp, _, err := jd.client.DecideTruncated(context.Background(), jev.DecisionRequest{
 		State:     msg.jevState(),
 		Questions: jd.questions,
@@ -63,11 +66,28 @@ func (jd *jevDetector) detect(msg *message) (map[string]jev.Answer, error) {
 	return resp.Answers, nil
 }
 
+func (jd *jevDetector) describe(msg *message, lang lingua.Language, conf float64) (string,
+	error) {
+
+	answers, err := jd.detect(msg)
+	return formatJevAnswers(lang, conf, answers), err
+}
+
+func printJevError(err error) {
+	if err != nil {
+		fmt.Printf("    jev: %s\n", err)
+	}
+}
+
+func isNoul(a jev.Answer) bool {
+	return a.Noul != nil && *a.Noul >= 0.5
+}
+
 func formatNoul(name string, a jev.Answer) string {
 	if a.Noul == nil {
 		return ""
 	}
-	if *a.Noul >= 0.5 {
+	if isNoul(a) {
 		return fmt.Sprintf("%s %.2f", name, *a.Noul)
 	}
 	return fmt.Sprintf("not %s %.2f", name, 1-*a.Noul)

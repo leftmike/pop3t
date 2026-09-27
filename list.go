@@ -10,6 +10,10 @@ import (
 
 func list(cfg *config, args []string) {
 	ld := lingua.NewLanguageDetectorBuilder().FromAllLanguages().Build()
+	jd, err := cfg.newJevDetector()
+	if err != nil {
+		fatal(err)
+	}
 	tot, err := cfg.list(func(conn *pop3.Conn, id int, entity *msgformat.Entity) error {
 		msg, err := messageFromEntity(entity)
 		if err != nil {
@@ -17,7 +21,9 @@ func list(cfg *config, args []string) {
 			return nil
 		}
 		lang, conf, _ := msg.detectLanguage(ld)
-		fmt.Printf("%3d  [%s %.0f%%] %s\n", id, lang, conf*100, msg.subject)
+		desc, err := jd.describe(msg, lang, conf)
+		fmt.Printf("%3d  [%s] %s\n", id, desc, msg.subject)
+		printJevError(err)
 		return nil
 	})
 	if err != nil {

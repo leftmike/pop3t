@@ -31,7 +31,7 @@ var (
 
 	cmds = map[string]cmd{
 		"delete":  {run: delete, help: "delete one or more messages by id"},
-		"filter":  {run: filter, help: "filter messages: [^]<lang>... [delete] [forward=<addr>]"},
+		"filter":  {run: filter, help: "filter messages: [^]<lang>... [^]spam|malicious... [delete] [forward=<addr>]"},
 		"forward": {run: forward, help: "forward one or more messages by id to an email address"},
 		"get":     {flags: getFlags, run: get, help: "fetch and display a single message by id"},
 		"help":    {help: "show this help"},
