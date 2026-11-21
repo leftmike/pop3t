@@ -136,6 +136,8 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 	fs.String("smtp-password", "", "SMTP password (or $POP3T_SMTP_PASSWORD)")
 	fs.Bool("smtp-no-tls", false, "SMTP disable TLS")
 	fs.String("jev-api-key", "", "Jev (OpenRouter) API key (or $POP3T_JEV_API_KEY)")
+	fs.String("jev-base-url", "", "Jev API base URL")
+	fs.String("jev-model", "", "Jev model")
 	fs.Parse(args)
 
 	var cfg *config
@@ -201,6 +203,10 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 			cfg.SMTP.NoTLS = (f.Value.String() == "true")
 		case "jev-api-key":
 			cfg.Jev.APIKey = f.Value.String()
+		case "jev-base-url":
+			cfg.Jev.BaseURL = f.Value.String()
+		case "jev-model":
+			cfg.Jev.Model = f.Value.String()
 		case "archive":
 			cfg.Archive = f.Value.String()
 		}
