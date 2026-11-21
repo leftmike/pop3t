@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/smtp"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -89,11 +90,18 @@ func (cfg *config) smtpPassword() string {
 }
 
 func configFilenames() []string {
-	if runtime.GOOS == "windows" {
-		return []string{"~/pop3t/pop3t.hcl", "~/pop3t.hcl", "./pop3t.hcl"}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return []string{"./pop3t.hcl"}
 	}
 
-	return []string{"~/.pop3t/pop3t.hcl", "~/.pop3t.hcl", "./pop3t.hcl"}
+	if runtime.GOOS == "windows" {
+		return []string{filepath.Join(home, "pop3t", "pop3t.hcl"), filepath.Join(home, "pop3t.hcl"),
+			"./pop3t.hcl"}
+	}
+
+	return []string{filepath.Join(home, ".pop3t", "pop3t.hcl"), filepath.Join(home, ".pop3t.hcl"),
+		"./pop3t.hcl"}
 }
 
 func readConfig(filenames []string) (*config, error) {
