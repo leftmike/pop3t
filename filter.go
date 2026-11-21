@@ -187,7 +187,7 @@ func filter(cfg *config, args []string) {
 			return nil
 		}
 		lang, conf, exists := msg.detectLanguage(ld)
-		if !exists || conf < 0.5 || !matchLanguage(lang, langFilters, exclude) {
+		if len(langFilters) > 0 && (!exists || conf < 0.5 || !matchLanguage(lang, langFilters, exclude)) {
 			return nil
 		}
 		answers, err := jd.detect(msg)
