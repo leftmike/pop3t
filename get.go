@@ -45,7 +45,7 @@ var (
 )
 
 func getFlags(fs *flag.FlagSet) {
-	fs.StringVar(&format, "format", "normal", "brief|normal|full|raw")
+	fs.StringVar(&format, "format", "normal", "brief|normal|full|raw|parts")
 }
 
 func get(cfg *config, args []string) {
