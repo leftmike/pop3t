@@ -203,7 +203,8 @@ func filter(cfg *config, args []string) {
 			if err != nil {
 				return err
 			}
-			err = sender.send(cfg.smtpUser(), addrs, raw)
+			msg := wrapForward(cfg.smtpUser(), addrs, raw)
+			err = sender.send(cfg.smtpUser(), addrs, msg)
 			if err != nil {
 				return err
 			}
