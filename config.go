@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 
 	msgformat "github.com/emersion/go-message"
 	"github.com/hashicorp/hcl/v2/hclsimple"
@@ -294,10 +293,8 @@ func (cfg *config) newConn() (*pop3.Conn, error) {
 	}
 
 	err = conn.Auth(user, password)
-	if err != nil && !strings.Contains(user, "@") {
-		err = conn.Auth(fmt.Sprintf("%s@%s", user, host), password)
-	}
 	if err != nil {
+		conn.Quit()
 		return nil, err
 	}
 
