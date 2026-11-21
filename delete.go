@@ -4,9 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/knadh/go-pop3"
 )
+
+func archiveName(uid string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') ||
+			r == '-' || r == '_' || r == '.' {
+			return r
+		}
+		return '_'
+	}, uid)
+}
 
 func deleteId(cfg *config, conn *pop3.Conn, id int) (string, error) {
 	if cfg.Archive != "" {
@@ -18,13 +29,16 @@ func deleteId(cfg *config, conn *pop3.Conn, id int) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if len(uidls) == 0 || uidls[0].UID == "" {
+			return "", fmt.Errorf("uidl(%d): no uid returned", id)
+		}
 
 		buf, err := conn.Cmd("RETR", true, id)
 		if err != nil {
 			return "", err
 		}
 
-		path := filepath.Join(cfg.Archive, uidls[0].UID+".eml")
+		path := filepath.Join(cfg.Archive, archiveName(uidls[0].UID)+".eml")
 		err = os.WriteFile(path, buf.Bytes(), 0644)
 		if err != nil {
 			return "", err
