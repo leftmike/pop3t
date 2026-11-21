@@ -128,14 +128,14 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 	fs.String("pop3-host", "", "POP3 server host")
 	fs.Int("pop3-port", 0, "POP3 server port")
 	fs.String("pop3-user", "", "POP3 username")
-	fs.String("pop3-password", "", "POP3 password")
+	fs.String("pop3-password", "", "POP3 password (or $POP3T_POP3_PASSWORD)")
 	fs.Bool("pop3-no-tls", false, "POP3 disable TLS")
 	fs.String("smtp-host", "", "SMTP server host")
 	fs.Int("smtp-port", 0, "SMTP server port")
 	fs.String("smtp-user", "", "SMTP username")
-	fs.String("smtp-password", "", "SMTP password")
+	fs.String("smtp-password", "", "SMTP password (or $POP3T_SMTP_PASSWORD)")
 	fs.Bool("smtp-no-tls", false, "SMTP disable TLS")
-	fs.String("jev-api-key", "", "Jev (OpenRouter) API key")
+	fs.String("jev-api-key", "", "Jev (OpenRouter) API key (or $POP3T_JEV_API_KEY)")
 	fs.Parse(args)
 
 	var cfg *config
@@ -164,6 +164,17 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 	}
 	if cfg.Jev == nil {
 		cfg.Jev = &jevConfig{}
+	}
+
+	for name, dst := range map[string]*string{
+		"POP3T_PASSWORD":      &cfg.Password,
+		"POP3T_POP3_PASSWORD": &cfg.POP3.Password,
+		"POP3T_SMTP_PASSWORD": &cfg.SMTP.Password,
+		"POP3T_JEV_API_KEY":   &cfg.Jev.APIKey,
+	} {
+		if v, ok := os.LookupEnv(name); ok {
+			*dst = v
+		}
 	}
 
 	fs.Visit(func(f *flag.Flag) {
@@ -267,7 +278,7 @@ func (cfg *config) newConn() (*pop3.Conn, error) {
 	user := cfg.pop3User()
 	password := cfg.pop3Password()
 	if host == "" || user == "" || password == "" {
-		return nil, errors.New("pop3 host, user, and password are required via config or flag")
+		return nil, errors.New("pop3 host, user, and password are required via config, environment, or flag")
 	}
 
 	port := cfg.POP3.Port
@@ -324,7 +335,7 @@ func (cfg *config) newSender() (*smtpSender, error) {
 	user := cfg.smtpUser()
 	password := cfg.smtpPassword()
 	if host == "" || user == "" || password == "" {
-		return nil, errors.New("smtp host, user, and password are required via config or flag")
+		return nil, errors.New("smtp host, user, and password are required via config, environment, or flag")
 	}
 
 	port := cfg.SMTP.Port
