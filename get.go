@@ -83,8 +83,7 @@ func get(cfg *config, args []string) {
 			}
 			os.Stdout.Write(buf.Bytes())
 		} else {
-			// entity, err := retrMessage(conn, id)
-			entity, err := conn.Retr(id)
+			entity, err := retrMessage(conn, id)
 			if err != nil {
 				fatal(err)
 			}

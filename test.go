@@ -17,7 +17,7 @@ func testFile(ld lingua.LanguageDetector, jd *jevDetector, name string) error {
 	defer f.Close()
 
 	entity, err := msgformat.Read(f)
-	if err != nil && !msgformat.IsUnknownCharset(err) {
+	if err != nil && !msgformat.IsUnknownCharset(err) && !msgformat.IsUnknownEncoding(err) {
 		return err
 	}
 	msg, err := messageFromEntity(entity)
