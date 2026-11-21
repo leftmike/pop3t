@@ -188,15 +188,17 @@ func filter(cfg *config, args []string) {
 		if len(langFilters) > 0 && (!exists || conf < 0.5 || !matchLanguage(lang, langFilters, exclude)) {
 			return nil
 		}
-		answers, err := jd.detect(msg)
-		if err != nil && len(jevFilters) > 0 {
-			fmt.Printf("skipping: %d: jev: %s\n", id, err)
-			return nil
-		} else if !matchJev(answers, jevFilters, jevExclude) {
-			return nil
+		var answers map[string]jev.Answer
+		if len(jevFilters) > 0 {
+			answers, err = jd.detect(msg)
+			if err != nil {
+				fmt.Printf("skipping: %d: jev: %s\n", id, err)
+				return nil
+			} else if !matchJev(answers, jevFilters, jevExclude) {
+				return nil
+			}
 		}
 		fmt.Printf("%3d [%s] %s\n", id, formatJevAnswers(lang, conf, answers), msg.subject)
-		printJevError(err)
 
 		if len(addrs) > 0 {
 			fwd := wrapForward(cfg.smtpUser(), addrs, raw)
