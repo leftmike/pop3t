@@ -11,7 +11,7 @@ import (
 func list(cfg *config, args []string) {
 	ld := lingua.NewLanguageDetectorBuilder().FromAllLanguages().Build()
 	jd := cfg.newJevDetector()
-	tot, err := cfg.list(func(conn *pop3.Conn, id int, entity *msgformat.Entity) error {
+	tot, err := cfg.list(func(conn *pop3.Conn, id int, raw []byte, entity *msgformat.Entity) error {
 		msg, err := messageFromEntity(entity)
 		if err != nil {
 			fmt.Printf("skipping: entity(%d): %s\n", id, err)

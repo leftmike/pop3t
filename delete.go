@@ -19,7 +19,7 @@ func archiveName(uid string) string {
 	}, uid)
 }
 
-func deleteId(cfg *config, conn *pop3.Conn, id int) (string, error) {
+func deleteId(cfg *config, conn *pop3.Conn, id int, raw []byte) (string, error) {
 	if cfg.Archive != "" {
 		if _, err := os.Stat(cfg.Archive); err != nil {
 			return "", fmt.Errorf("archive directory does not exist: %s", cfg.Archive)
@@ -33,9 +33,11 @@ func deleteId(cfg *config, conn *pop3.Conn, id int) (string, error) {
 			return "", fmt.Errorf("uidl(%d): no uid returned", id)
 		}
 
-		raw, err := retrRaw(conn, id)
-		if err != nil {
-			return "", err
+		if raw == nil {
+			raw, err = retrRaw(conn, id)
+			if err != nil {
+				return "", err
+			}
 		}
 
 		path := filepath.Join(cfg.Archive, archiveName(uidls[0].UID)+".eml")
@@ -72,7 +74,7 @@ func delete(cfg *config, args []string) {
 	defer conn.Quit()
 
 	for _, id := range ids {
-		path, err := deleteId(cfg, conn, id)
+		path, err := deleteId(cfg, conn, id, nil)
 		if err != nil {
 			fatal(err)
 		}

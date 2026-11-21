@@ -178,7 +178,7 @@ func filter(cfg *config, args []string) {
 
 	cnt := 0
 	ld := lingua.NewLanguageDetectorBuilder().FromAllLanguages().Build()
-	tot, err := cfg.list(func(conn *pop3.Conn, id int, entity *msgformat.Entity) error {
+	tot, err := cfg.list(func(conn *pop3.Conn, id int, raw []byte, entity *msgformat.Entity) error {
 		msg, err := messageFromEntity(entity)
 		if err != nil {
 			fmt.Printf("skipping: entity(%d): %s\n", id, err)
@@ -199,19 +199,15 @@ func filter(cfg *config, args []string) {
 		printJevError(err)
 
 		if len(addrs) > 0 {
-			raw, err := retrRaw(conn, id)
-			if err != nil {
-				return err
-			}
-			msg := wrapForward(cfg.smtpUser(), addrs, raw)
-			err = sender.send(cfg.smtpUser(), addrs, msg)
+			fwd := wrapForward(cfg.smtpUser(), addrs, raw)
+			err = sender.send(cfg.smtpUser(), addrs, fwd)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("forwarded %d to %s\n", id, strings.Join(addrs, ", "))
 		}
 		if del {
-			path, err := deleteId(cfg, conn, id)
+			path, err := deleteId(cfg, conn, id, raw)
 			if err != nil {
 				return err
 			}

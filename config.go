@@ -216,6 +216,10 @@ func retrMessage(conn *pop3.Conn, id int) (*msgformat.Entity, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseMessage(raw)
+}
+
+func parseMessage(raw []byte) (*msgformat.Entity, error) {
 	m, err := msgformat.Read(bytes.NewReader(raw))
 	if err != nil && !msgformat.IsUnknownCharset(err) && !msgformat.IsUnknownEncoding(err) {
 		return nil, err
@@ -223,8 +227,8 @@ func retrMessage(conn *pop3.Conn, id int) (*msgformat.Entity, error) {
 	return m, nil
 }
 
-func (cfg *config) list(fn func(conn *pop3.Conn, id int, entity *msgformat.Entity) error) (int,
-	error) {
+func (cfg *config) list(fn func(conn *pop3.Conn, id int, raw []byte,
+	entity *msgformat.Entity) error) (int, error) {
 
 	conn, err := cfg.newConn()
 	if err != nil {
@@ -239,12 +243,17 @@ func (cfg *config) list(fn func(conn *pop3.Conn, id int, entity *msgformat.Entit
 	}
 
 	for _, mid := range mids {
-		entity, err := retrMessage(conn, mid.ID)
+		raw, err := retrRaw(conn, mid.ID)
 		if err != nil {
 			fmt.Printf("skipping: retr(%d): %s\n", mid.ID, err)
 			continue // XX
 		}
-		err = fn(conn, mid.ID, entity)
+		entity, err := parseMessage(raw)
+		if err != nil {
+			fmt.Printf("skipping: parse(%d): %s\n", mid.ID, err)
+			continue
+		}
+		err = fn(conn, mid.ID, raw, entity)
 		if err != nil {
 			conn.Rset()
 			return 0, err
