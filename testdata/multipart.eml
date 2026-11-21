@@ -1,0 +1,16 @@
+From: a@example.com
+Subject: multipart
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="XX"
+
+--XX
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+Caf=E9 cr=E8me br=FBl=E9e.
+--XX
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: base64
+
+PHA+SGVsbG88L3A+
+--XX--

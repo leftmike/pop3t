@@ -1,0 +1,16 @@
+From: a@example.com
+Subject: html only
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="YY"
+
+--YY
+Content-Type: text/html; charset=shift_jis
+Content-Transfer-Encoding: base64
+
+PHA+k/qWe4zqPC9wPg==
+--YY
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+
+JVBERi0=
+--YY--

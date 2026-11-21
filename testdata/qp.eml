@@ -1,0 +1,7 @@
+From: a@example.com
+Subject: =?utf-8?q?quoted_printable?=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Caf=C3=A9 costs 5=3D5 dollars, a very long line that is soft wrapped right=
+ here.

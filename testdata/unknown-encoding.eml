@@ -1,0 +1,6 @@
+From: a@example.com
+Subject: unknown encoding
+Content-Type: text/plain
+Content-Transfer-Encoding: x-unknown
+
+hello there
