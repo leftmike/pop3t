@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 
 	_ "github.com/emersion/go-message/charset"
 )
@@ -15,8 +17,8 @@ func fatal(err error) {
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: %s <cmd> [flags] [args]\n", os.Args[0])
-	for name, cmd := range cmds {
-		fmt.Fprintf(os.Stderr, "    %s: %s\n", name, cmd.help)
+	for _, name := range slices.Sorted(maps.Keys(cmds)) {
+		fmt.Fprintf(os.Stderr, "    %s: %s\n", name, cmds[name].help)
 	}
 }
 
