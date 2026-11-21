@@ -127,7 +127,7 @@ func (msg *message) jevState() map[string]any {
 		}
 	}
 	state["subject"] = msg.subject
-	state["body"] = extractPlainText(msg.header.Get("Content-Type"), msg.body)
+	state["body"] = msg.plainText()
 	return state
 }
 

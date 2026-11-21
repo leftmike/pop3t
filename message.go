@@ -2,12 +2,10 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
-	"mime/quotedprintable"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -17,25 +15,25 @@ import (
 	"golang.org/x/net/html"
 )
 
-func decodeBody(enc string, r io.Reader) string {
-	switch strings.ToLower(strings.TrimSpace(enc)) {
-	case "quoted-printable":
-		b, _ := io.ReadAll(quotedprintable.NewReader(r))
-		return string(b)
-	case "base64":
-		raw, _ := io.ReadAll(r)
-		var filtered []byte
-		for _, c := range raw {
-			if c != '\r' && c != '\n' && c != ' ' && c != '\t' {
-				filtered = append(filtered, c)
-			}
+func (msg *message) eachPart(fn func(mediaType string, part *msgformat.Entity)) {
+	entity, err := msgformat.New(*msg.header, bytes.NewReader(msg.body))
+	if err != nil {
+		return
+	}
+	mr := entity.MultipartReader()
+	if mr == nil {
+		return
+	}
+	for {
+		part, _ := mr.NextPart()
+		if part == nil {
+			break
 		}
-		dec := make([]byte, base64.StdEncoding.DecodedLen(len(filtered)))
-		n, _ := base64.StdEncoding.Decode(dec, filtered)
-		return string(dec[:n])
-	default:
-		b, _ := io.ReadAll(r)
-		return string(b)
+		mediaType, _, _ := part.Header.ContentType()
+		if mediaType == "" {
+			mediaType = "text/plain"
+		}
+		fn(mediaType, part)
 	}
 }
 
@@ -54,35 +52,30 @@ func stripHTML(s string) string {
 	return buf.String()
 }
 
-func extractPlainText(contentType string, body []byte) string {
-	mediaType, params, err := mime.ParseMediaType(contentType)
+func (msg *message) plainText() string {
+	mediaType, _, err := mime.ParseMediaType(msg.header.Get("Content-Type"))
 	if err != nil {
-		return string(body)
+		return string(msg.body)
 	}
 	if !strings.HasPrefix(mediaType, "multipart/") {
-		text := string(body)
+		text := string(msg.body)
 		if mediaType == "text/html" {
 			text = stripHTML(text)
 		}
 		return text
 	}
 
-	mr := multipart.NewReader(bytes.NewReader(body), params["boundary"])
 	var plainParts, htmlParts []string
-	for {
-		part, err := mr.NextPart()
-		if err != nil {
-			break
-		}
-		pt, _, _ := mime.ParseMediaType(part.Header.Get("Content-Type"))
-		cte := part.Header.Get("Content-Transfer-Encoding")
-		switch pt {
+	msg.eachPart(func(mediaType string, part *msgformat.Entity) {
+		switch mediaType {
 		case "text/plain":
-			plainParts = append(plainParts, decodeBody(cte, part))
+			b, _ := io.ReadAll(part.Body)
+			plainParts = append(plainParts, string(b))
 		case "text/html":
-			htmlParts = append(htmlParts, decodeBody(cte, part))
+			b, _ := io.ReadAll(part.Body)
+			htmlParts = append(htmlParts, string(b))
 		}
-	}
+	})
 	if len(plainParts) > 0 {
 		return strings.Join(plainParts, "\n")
 	}
@@ -167,7 +160,7 @@ func (msg *message) printHeaders(fields []string) {
 }
 
 func (msg *message) formatBody(summarize bool) string {
-	mediaType, params, err := mime.ParseMediaType(msg.header.Get("Content-Type"))
+	mediaType, _, err := mime.ParseMediaType(msg.header.Get("Content-Type"))
 	if err != nil || !strings.HasPrefix(mediaType, "multipart/") {
 		text := string(msg.body)
 		if summarize {
@@ -176,21 +169,13 @@ func (msg *message) formatBody(summarize bool) string {
 		return text
 	}
 
-	mr := multipart.NewReader(bytes.NewReader(msg.body), params["boundary"])
 	var parts []string
-	for {
-		part, err := mr.NextPart()
-		if err != nil {
-			break
-		}
+	msg.eachPart(func(mediaType string, part *msgformat.Entity) {
 		ct := part.Header.Get("Content-Type")
 		cte := part.Header.Get("Content-Transfer-Encoding")
-		pt, _, _ := mime.ParseMediaType(ct)
-		if pt == "" {
-			pt = "text/plain"
-		}
-		if strings.HasPrefix(pt, "text/plain") {
-			text := decodeBody(cte, part)
+		if mediaType == "text/plain" {
+			b, _ := io.ReadAll(part.Body)
+			text := string(b)
 			if summarize {
 				var header string
 				if cte != "" {
@@ -203,14 +188,14 @@ func (msg *message) formatBody(summarize bool) string {
 				parts = append(parts, text)
 			}
 		} else {
-			b, _ := io.ReadAll(part)
+			b, _ := io.ReadAll(part.Body)
 			if cte != "" {
 				parts = append(parts, fmt.Sprintf("[%s, %s, %d bytes]", ct, cte, len(b)))
 			} else {
 				parts = append(parts, fmt.Sprintf("[%s, %d bytes]", ct, len(b)))
 			}
 		}
-	}
+	})
 	return strings.Join(parts, "\n")
 }
 
@@ -273,7 +258,7 @@ func stripURLs(s string) string {
 func (msg *message) detectLanguage(ld lingua.LanguageDetector) (lingua.Language, float64, bool) {
 	detectText := msg.subject + "\n"
 	if len(msg.subject) == utf8.RuneCountInString(msg.subject) {
-		detectText += stripURLs(extractPlainText(msg.header.Get("Content-Type"), msg.body))
+		detectText += stripURLs(msg.plainText())
 	}
 	vals := ld.ComputeLanguageConfidenceValues(detectText)
 	if len(vals) == 0 {
