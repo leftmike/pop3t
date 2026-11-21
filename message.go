@@ -54,16 +54,13 @@ func stripHTML(s string) string {
 	return buf.String()
 }
 
-func extractPlainText(contentType, transferEnc string, body []byte) string {
-	if contentType == "" {
-		return decodeBody(transferEnc, bytes.NewReader(body))
-	}
+func extractPlainText(contentType string, body []byte) string {
 	mediaType, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		return decodeBody(transferEnc, bytes.NewReader(body))
+		return string(body)
 	}
 	if !strings.HasPrefix(mediaType, "multipart/") {
-		text := decodeBody(transferEnc, bytes.NewReader(body))
+		text := string(body)
 		if mediaType == "text/html" {
 			text = stripHTML(text)
 		}
@@ -170,11 +167,9 @@ func (msg *message) printHeaders(fields []string) {
 }
 
 func (msg *message) formatBody(summarize bool) string {
-	contentType := msg.header.Get("Content-Type")
-	transferEnc := msg.header.Get("Content-Transfer-Encoding")
-	mediaType, params, err := mime.ParseMediaType(contentType)
+	mediaType, params, err := mime.ParseMediaType(msg.header.Get("Content-Type"))
 	if err != nil || !strings.HasPrefix(mediaType, "multipart/") {
-		text := decodeBody(transferEnc, bytes.NewReader(msg.body))
+		text := string(msg.body)
 		if summarize {
 			return truncate(text, 90)
 		}
@@ -278,8 +273,7 @@ func stripURLs(s string) string {
 func (msg *message) detectLanguage(ld lingua.LanguageDetector) (lingua.Language, float64, bool) {
 	detectText := msg.subject + "\n"
 	if len(msg.subject) == utf8.RuneCountInString(msg.subject) {
-		detectText += stripURLs(extractPlainText(msg.header.Get("Content-Type"),
-			msg.header.Get("Content-Transfer-Encoding"), msg.body))
+		detectText += stripURLs(extractPlainText(msg.header.Get("Content-Type"), msg.body))
 	}
 	vals := ld.ComputeLanguageConfidenceValues(detectText)
 	if len(vals) == 0 {
