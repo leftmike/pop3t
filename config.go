@@ -256,7 +256,7 @@ func (cfg *config) list(fn func(conn *pop3.Conn, id int, raw []byte,
 		raw, err := retrRaw(conn, mid.ID)
 		if err != nil {
 			fmt.Printf("skipping: retr(%d): %s\n", mid.ID, err)
-			continue // XX
+			continue
 		}
 		entity, err := parseMessage(raw)
 		if err != nil {

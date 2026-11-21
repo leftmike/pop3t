@@ -264,10 +264,5 @@ func (msg *message) detectLanguage(ld lingua.LanguageDetector) (lingua.Language,
 	if len(vals) == 0 {
 		return lingua.Unknown, 0, false
 	}
-	/*
-		if vals[1].Value() > 0 {
-			fmt.Printf("%s %.0f%% ", vals[1].Language(), vals[1].Value()*100)
-		}
-	*/
 	return vals[0].Language(), vals[0].Value(), true
 }
