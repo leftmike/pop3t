@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/smtp"
 	"os"
 )
 
@@ -18,7 +17,7 @@ func forward(cfg *config, args []string) {
 	if err != nil {
 		fatal(err)
 	}
-	addr, auth, err := cfg.newSend()
+	sender, err := cfg.newSender()
 	if err != nil {
 		fatal(err)
 	}
@@ -35,7 +34,7 @@ func forward(cfg *config, args []string) {
 			fatal(err)
 		}
 
-		err = smtp.SendMail(addr, auth, cfg.smtpUser(), []string{to}, raw)
+		err = sender.send(cfg.smtpUser(), []string{to}, raw)
 		if err != nil {
 			fatal(err)
 		}

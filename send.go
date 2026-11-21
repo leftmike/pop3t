@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/smtp"
 	"os"
 	"strings"
 )
@@ -39,12 +38,12 @@ func send(cfg *config, args []string) {
 	fmt.Fprintf(&buf, "\r\n")
 	buf.Write(body)
 
-	addr, auth, err := cfg.newSend()
+	sender, err := cfg.newSender()
 	if err != nil {
 		fatal(err)
 	}
 
-	if err := smtp.SendMail(addr, auth, cfg.smtpUser(), args, buf.Bytes()); err != nil {
+	if err := sender.send(cfg.smtpUser(), args, buf.Bytes()); err != nil {
 		fatal(err)
 	}
 

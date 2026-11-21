@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -294,12 +295,30 @@ func (cfg *config) newConn() (*pop3.Conn, error) {
 	return conn, nil
 }
 
-func (cfg *config) newSend() (string, smtp.Auth, error) {
+type smtpSender struct {
+	addr        string
+	host        string
+	auth        smtp.Auth
+	noTLS       bool
+	implicitTLS bool
+}
+
+type unencryptedAuth struct {
+	smtp.Auth
+}
+
+func (a unencryptedAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	info := *server
+	info.TLS = true
+	return a.Auth.Start(&info)
+}
+
+func (cfg *config) newSender() (*smtpSender, error) {
 	host := cfg.smtpHost()
 	user := cfg.smtpUser()
 	password := cfg.smtpPassword()
 	if host == "" || user == "" || password == "" {
-		return "", nil, errors.New("smtp host, user, and password are required via config or flag")
+		return nil, errors.New("smtp host, user, and password are required via config or flag")
 	}
 
 	port := cfg.SMTP.Port
@@ -311,11 +330,76 @@ func (cfg *config) newSend() (string, smtp.Auth, error) {
 		}
 	}
 
-	smtpAddr := fmt.Sprintf("%s:%d", host, port)
-	smtpAuth := smtp.PlainAuth("", user, password, host)
+	s := &smtpSender{
+		addr:        fmt.Sprintf("%s:%d", host, port),
+		host:        host,
+		auth:        smtp.PlainAuth("", user, password, host),
+		noTLS:       cfg.SMTP.NoTLS,
+		implicitTLS: !cfg.SMTP.NoTLS && port == 465,
+	}
+	if s.noTLS {
+		s.auth = unencryptedAuth{s.auth}
+	}
 	if verbose {
-		fmt.Printf("smtp: %s user:%s tls:%v\n", smtpAddr, user, !cfg.SMTP.NoTLS)
+		fmt.Printf("smtp: %s user:%s tls:%v implicit:%v\n", s.addr, user, !s.noTLS, s.implicitTLS)
 	}
 
-	return smtpAddr, smtpAuth, nil
+	return s, nil
+}
+
+func (s *smtpSender) send(from string, to []string, msg []byte) error {
+	tlsConfig := &tls.Config{ServerName: s.host}
+
+	var c *smtp.Client
+	if s.implicitTLS {
+		conn, err := tls.Dial("tcp", s.addr, tlsConfig)
+		if err != nil {
+			return err
+		}
+		c, err = smtp.NewClient(conn, s.host)
+		if err != nil {
+			conn.Close()
+			return err
+		}
+	} else {
+		var err error
+		c, err = smtp.Dial(s.addr)
+		if err != nil {
+			return err
+		}
+	}
+	defer c.Close()
+
+	if !s.noTLS && !s.implicitTLS {
+		if ok, _ := c.Extension("STARTTLS"); !ok {
+			return errors.New("smtp server does not support STARTTLS")
+		}
+		if err := c.StartTLS(tlsConfig); err != nil {
+			return err
+		}
+	}
+	if ok, _ := c.Extension("AUTH"); ok {
+		if err := c.Auth(s.auth); err != nil {
+			return err
+		}
+	}
+	if err := c.Mail(from); err != nil {
+		return err
+	}
+	for _, addr := range to {
+		if err := c.Rcpt(addr); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(msg); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/smtp"
 	"strings"
 
 	msgformat "github.com/emersion/go-message"
@@ -163,11 +162,10 @@ func filter(cfg *config, args []string) {
 		}
 	}
 
-	var smtpAddr string
-	var smtpAuth smtp.Auth
+	var sender *smtpSender
 	if len(addrs) > 0 {
 		var err error
-		smtpAddr, smtpAuth, err = cfg.newSend()
+		sender, err = cfg.newSender()
 		if err != nil {
 			fatal(err)
 		}
@@ -205,7 +203,7 @@ func filter(cfg *config, args []string) {
 			if err != nil {
 				return err
 			}
-			err = smtp.SendMail(smtpAddr, smtpAuth, cfg.smtpUser(), addrs, raw)
+			err = sender.send(cfg.smtpUser(), addrs, raw)
 			if err != nil {
 				return err
 			}
