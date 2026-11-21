@@ -30,12 +30,12 @@ func forward(cfg *config, args []string) {
 	defer conn.Quit()
 
 	for _, id := range ids {
-		buf, err := conn.Cmd("RETR", true, id)
+		raw, err := retrRaw(conn, id)
 		if err != nil {
 			fatal(err)
 		}
 
-		err = smtp.SendMail(addr, auth, cfg.smtpUser(), []string{to}, buf.Bytes())
+		err = smtp.SendMail(addr, auth, cfg.smtpUser(), []string{to}, raw)
 		if err != nil {
 			fatal(err)
 		}

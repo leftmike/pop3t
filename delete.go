@@ -33,13 +33,13 @@ func deleteId(cfg *config, conn *pop3.Conn, id int) (string, error) {
 			return "", fmt.Errorf("uidl(%d): no uid returned", id)
 		}
 
-		buf, err := conn.Cmd("RETR", true, id)
+		raw, err := retrRaw(conn, id)
 		if err != nil {
 			return "", err
 		}
 
 		path := filepath.Join(cfg.Archive, archiveName(uidls[0].UID)+".eml")
-		err = os.WriteFile(path, buf.Bytes(), 0644)
+		err = os.WriteFile(path, raw, 0644)
 		if err != nil {
 			return "", err
 		}

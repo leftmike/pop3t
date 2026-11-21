@@ -201,11 +201,11 @@ func filter(cfg *config, args []string) {
 		printJevError(err)
 
 		if len(addrs) > 0 {
-			buf, err := conn.Cmd("RETR", true, id)
+			raw, err := retrRaw(conn, id)
 			if err != nil {
 				return err
 			}
-			err = smtp.SendMail(smtpAddr, smtpAuth, cfg.smtpUser(), addrs, buf.Bytes())
+			err = smtp.SendMail(smtpAddr, smtpAuth, cfg.smtpUser(), addrs, raw)
 			if err != nil {
 				return err
 			}

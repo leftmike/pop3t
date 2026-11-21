@@ -77,11 +77,11 @@ func get(cfg *config, args []string) {
 		}
 
 		if format == "raw" {
-			buf, err := conn.Cmd("RETR", true, id)
+			raw, err := retrRaw(conn, id)
 			if err != nil {
 				fatal(err)
 			}
-			os.Stdout.Write(buf.Bytes())
+			os.Stdout.Write(raw)
 		} else {
 			entity, err := retrMessage(conn, id)
 			if err != nil {

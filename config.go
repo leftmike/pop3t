@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -197,12 +198,24 @@ func loadConfig(fs *flag.FlagSet, args []string) (*config, []string) {
 	return cfg, fs.Args()
 }
 
-func retrMessage(conn *pop3.Conn, id int) (*msgformat.Entity, error) {
-	b, err := conn.Cmd("RETR", true, id)
+func retrRaw(conn *pop3.Conn, id int) ([]byte, error) {
+	buf, err := conn.Cmd("RETR", true, id)
 	if err != nil {
 		return nil, err
 	}
-	m, err := msgformat.Read(b)
+	lines := bytes.SplitAfter(buf.Bytes(), []byte("\n"))
+	for i, line := range lines {
+		lines[i] = bytes.TrimPrefix(line, []byte("."))
+	}
+	return bytes.Join(lines, nil), nil
+}
+
+func retrMessage(conn *pop3.Conn, id int) (*msgformat.Entity, error) {
+	raw, err := retrRaw(conn, id)
+	if err != nil {
+		return nil, err
+	}
+	m, err := msgformat.Read(bytes.NewReader(raw))
 	if err != nil && !msgformat.IsUnknownCharset(err) && !msgformat.IsUnknownEncoding(err) {
 		return nil, err
 	}
